@@ -15,7 +15,7 @@ const registerUser = asyncHandler(async (req, res) => {
     //send a response with the user data
 
     const {fullName, email, username, password} = req.body;
-    console.log(email, username, password, fullName);
+    // console.log(email, username, password, fullName);
 
     if ( [fullName,email,username,password].some( (field) => field?.trim() === "" ) ) {
         throw new ApiError(400, 'Please provide all the required fields');
@@ -27,9 +27,11 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // check for images and for avatars
-    const avatar = req.files.avatar?.[0]?.path || 'https://via.placeholder.com/150x150';
-    const coverImage = req.files.coverImage?.[0]?.path || 'https://via.placeholder.com/1200x400';
-    console.log(avatar, coverImage);
+    const avatar = req.files.avatar?.[0]?.path;
+    let coverImage;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImage = req.files.coverImage[0].path;
+    }
     
     if (!avatar) {
         throw new ApiError(400, 'Please provide an avatar image');
@@ -38,21 +40,20 @@ const registerUser = asyncHandler(async (req, res) => {
     //upload them to cloudinary
     const avatarUrl = await uploadToCloudinary(avatar);
     const coverImageUrl = await uploadToCloudinary(coverImage);
-    console.log(avatarUrl, coverImageUrl);
-    log(avatarUrl.url, coverImageUrl.url);
 
-    if (!avatarUrl || !coverImageUrl) {
+    if (!avatarUrl) {
         throw new ApiError(500, 'Error uploading images to cloudinary');
     }
     // create the user object and create entry in the database
     const user = await User.create({
         fullName,
         email,
-        username: username.lowerCase(),
+        username: username?.trim().toLowerCase(),  // Fix: Corrected `.toLowerCase()`
         password,
-        avatar: avatarUrl.url || 'https://via.placeholder.com/150x150',
-        coverImage: coverImageUrl.url || 'https://via.placeholder.com/1200x400',
-    })
+        avatar: avatarUrl.url ,
+        coverImage: coverImageUrl?.url || "",
+    });
+    
     console.log(user);
     const createdUser = await User.findById(user._id).select('-password -refreshToken')
     if (!createdUser) {
