@@ -15,6 +15,8 @@ cloudinary.config({
 const uploadToCloudinary = async (filePath) => {
     try {
         if (!fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath); // Delete the file from local storage if it doesn't exist
+            console.error('File does not exist:', filePath);
             return null;
         }
         const response = await cloudinary.uploader.upload(filePath, {resource_type: 'auto'})
@@ -32,4 +34,19 @@ const uploadToCloudinary = async (filePath) => {
     }
 }
 
-export { uploadToCloudinary };
+const deleteFromCloudinary = async (publicId) => {
+    try {
+        const response = await cloudinary.uploader.destroy(publicId, {resource_type: 'auto'});
+
+        //file delete completed
+        console.log('File deleted from Cloudinary successfully!', response.result);
+        console.log("response: "+response);
+        
+        return response; // Return the result of the delete operation
+    } catch (error) {
+        console.error('Error deleting file from Cloudinary:', error.message);
+        return null; // Return null if delete fails         
+    }
+};
+
+export { uploadToCloudinary, deleteFromCloudinary };

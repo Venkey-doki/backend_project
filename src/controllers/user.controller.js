@@ -249,7 +249,9 @@ const changePassword = asyncHandler(async (req,res) => {
 });
 
 const getCUrrentUser = asyncHandler(async (req, res) => {
-    return req.status(200).json(200, req.user, "User fetched successfully");
+    return req.status(200).json(
+        new ApiResponse(200, req.user, 'Current user fetched successfully')
+    );
 });
 
 const updateUserdetails = asyncHandler(async (req, res) => {
@@ -290,21 +292,39 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
         throw new ApiError(500, 'Error uploading images to cloudinary');
     }
 
-    await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: {
-                avatar: avatarCloudinary.url
-            }
-        },
-        {
-            new: true,
-        }
-    ).select('-password -refreshToken');
+    // await User.findByIdAndUpdate(
+    //     req.user?._id,
+    //     {
+    //         $set: {
+    //             avatar: avatarCloudinary.url
+    //         }
+    //     },
+    //     {
+    //         new: true,
+    //     }
+    // ).select('-password -refreshToken');
+
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+    // update the user avatar
+    // and delete the old avatar from cloudinary
+    const oldAvatar = user.avatar;
+
+    user.avatar = avatarCloudinary.url;
+    await user.save({validateBeforeSave: false});
+    // delete the old avatar from cloudinary
+
+    if (oldAvatar) {
+        const publicId = oldAvatar.split('/').pop().split('.')[0];
+        await deleteFromCloudinary(publicId);
+    }
 
     return res.status(200).json(
-        new ApiResponse(200, null, 'Avatar updated successfully')
+        new ApiResponse(200, { avatar: user.avatar }, 'Avatar updated successfully')
     );
+    
 });
 
 const updateUserCoverImage = asyncHandler(async(req,res) => {
@@ -319,20 +339,38 @@ const updateUserCoverImage = asyncHandler(async(req,res) => {
         throw new ApiError(500, 'Error uploading images to cloudinary');
     }
 
-    await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set: {
-                coverImage: coverImageCloudinary.url
-            }
-        },
-        {
-            new: true,
-        }
-    ).select('-password -refreshToken');
+    // await User.findByIdAndUpdate(
+    //     req.user?._id,
+    //     {
+    //         $set: {
+    //             coverImage: coverImageCloudinary.url
+    //         }
+    //     },
+    //     {
+    //         new: true,
+    //     }
+    // ).select('-password -refreshToken');
+
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+    // update the user avatar
+    // and delete the old avatar from cloudinary
+    const oldcoverImage = user.coverImage;
+
+    user.coverImage = coverImageCloudinary.url;
+
+    await user.save({validateBeforeSave: false});
+    // delete the old avatar from cloudinary
+
+    if (oldcoverImage) {
+        const publicId = oldcoverImage.split('/').pop().split('.')[0];
+        await deleteFromCloudinary(publicId);
+    }
 
     return res.status(200).json(
-        new ApiResponse(200, null, 'coverImage updated successfully')
+        new ApiResponse(200, { avatar: user.coverImage }, 'coverImage updated successfully')
     );
 });
 
